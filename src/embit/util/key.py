@@ -7,6 +7,19 @@ import hmac
 import hashlib
 
 
+def _bit_length(value):
+    """MicroPython has no int.bit_length(); count bits a byte at a time.
+
+    Only used while DER-encoding a signature, so the loop's cost is
+    irrelevant next to the scalar multiplication that produced the value.
+    """
+    length = 0
+    while value:
+        length += 1
+        value >>= 1
+    return length
+
+
 def TaggedHash(tag, data):
     ss = hashlib.sha256(tag.encode("utf-8")).digest()
     ss += ss
@@ -438,8 +451,8 @@ class ECKey:
         # Represent in DER format. The byte representations of r and s have
         # length rounded up (255 bits becomes 32 bytes and 256 bits becomes 33
         # bytes).
-        rb = r.to_bytes((r.bit_length() + 8) // 8, "big")
-        sb = s.to_bytes((s.bit_length() + 8) // 8, "big")
+        rb = r.to_bytes((_bit_length(r) + 8) // 8, "big")
+        sb = s.to_bytes((_bit_length(s) + 8) // 8, "big")
         return (
             b"\x30"
             + bytes([4 + len(rb) + len(sb), 2, len(rb)])
